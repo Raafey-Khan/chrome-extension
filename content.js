@@ -1,31 +1,52 @@
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.action === 'collect-css') {
-        const formattedCSS = collectAllCSSRules();
-        window.__collectedCSS = formattedCSS;
-        alert('CSS collected! Open popup to copy.');
-        sendResponse({ css: formattedCSS });
+    if (msg.action === 'start-picker') {
+        startElementPicker();
     }
 });
 
-function beautifyCSS(css) {
-    return css.replace(/}/g, '}\n\n')
-              .replace(/{/g, ' {\n    ')
-              .replace(/;/g, ';\n    ')
-              .replace(/\n\s*\n/g, '\n\n')
-              .trim();
+function startElementPicker() {
+    alert('Click any element to collect its authored CSS (not computed).');
+
+    function onClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const element = event.target;
+        const css = collectAuthoredCSS(element);
+        window.__collectedCSS = css;
+        document.removeEventListener('click', onClick, true);
+        chrome.runtime.sendMessage({ cssCollected: true, css });
+        navigator.clipboard.writeText(css);
+        alert('Element authored CSS copied!');
+    }
+
+    document.addEventListener('click', onClick, true);
 }
 
-function collectAllCSSRules() {
-    let cssText = '';
+function collectAuthoredCSS(element) {
+    let cssLines = [];
+
     for (let sheet of document.styleSheets) {
         try {
-            if (!sheet.href || sheet.href.startsWith('chrome-extension://')) continue;
+            if (!sheet.cssRules) continue;
             for (let rule of sheet.cssRules) {
-                cssText += rule.cssText + '\n';
+                if (rule instanceof CSSStyleRule && element.matches(rule.selectorText)) {
+                    const formatted = beautifyRule(rule);
+                    cssLines.push(formatted);
+                }
             }
         } catch (e) {
-            // Ignore cross-origin
+            // Ignore cross-origin stylesheets
         }
     }
-    return beautifyCSS(cssText);
+
+    return cssLines.join('\n\n').trim();
+}
+
+function beautifyRule(rule) {
+    const selector = rule.selectorText;
+    const styleProps = Array.from(rule.style)
+        .map(prop => `  ${prop}: ${rule.style.getPropertyValue(prop).trim()};`)
+        .join('\n');
+
+    return `${selector} {\n${styleProps}\n}`;
 }

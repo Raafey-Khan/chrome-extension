@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        if (msg.cssCollected) {
+            document.getElementById('css-output').value = msg.css || '';
+        }
+    });
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         chrome.scripting.executeScript({
             target: { tabId: tabs[0].id },
@@ -10,9 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('start-btn').addEventListener('click', () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'collect-css' }, (response) => {
-                document.getElementById('css-output').value = response?.css || '';
-            });
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'start-picker' });
         });
     });
 
