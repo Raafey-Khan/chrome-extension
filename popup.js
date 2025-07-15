@@ -14,11 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('start-btn').addEventListener('click', () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'start-picker' });
+ document.getElementById('start-btn').addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.scripting.insertCSS({
+            target: { tabId: tabs[0].id },
+            files: ['styles.css']
         });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'start-picker' });
     });
+});
+
 
     document.getElementById('copy-btn').addEventListener('click', () => {
         const cssText = document.getElementById('css-output').value;
